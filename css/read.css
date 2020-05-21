@@ -1,0 +1,123 @@
+.manga-thumbnail {
+    width: 100%;
+    cursor: pointer;
+    height: 200px;
+    max-width: 155px;
+}
+
+.chapterPage {
+    min-width: auto;
+    max-width: 100%;
+}
+
+.min-width-mode .chapterPage {
+    min-width: 100%;
+}
+
+.change-state-select-box {
+    padding: 5px;
+    margin: 15px 0;
+}
+
+.change-state-select-box.languages-top-margin {
+    margin-top: 0;
+}
+
+.full-list-select-box {
+    padding: 5px 0 5px 0;
+}
+
+.left-float {
+    float: left;
+}
+
+.width-auto {
+    width: auto !important;
+}
+
+.width-auto {
+    float: left;
+}
+
+.show-all-menu-button-icon {
+    margin-top: 15px;
+}
+
+.swiper-lazy-preloader {
+    left: 77px!important;
+}
+
+.slide-wrapper {
+    position: relative;
+}
+
+.chapters-count-icon-wrapper {
+    position: absolute;
+    bottom: 8px;
+    left: 6px;
+    color: lightseagreen;
+}
+
+.chapters-count-text {
+    color: white;
+}
+
+.fa-3x.chapters-count-icon-wrapper {
+    font-size: 14px;
+}
+
+.read-homepage-wrapper .swiper-container-horizontal>.swiper-pagination-bullets {
+    bottom: auto;
+    top: 10px;
+}
+
+.login-info {
+    text-align: right;
+    margin-top: 15px;
+}
+
+.divider-div {
+    height: 10px;
+}
+
+.log-in-input-box {
+    margin-top: 15px;
+    float: right;
+}
+
+.new-login-input {
+    padding: 5px;
+}
+
+.download-list-cron-wrapper {
+    position: fixed;
+    bottom: 15px;
+    right: 0;
+    background-color: white;
+    border: 1px solid;
+    padding: 15px;
+    z-index: 100;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.comment-text-box {
+    margin-bottom: 15px;
+    width: 400PX;
+    min-height: 84px;
+    max-width: 100%;
+}
+
+@media only screen and (max-width: 400px) {
+    .swiper-lazy-preloader {
+        left: 50%!important;
+    }
+}
+
+@media only screen and (max-width: 320px) {
+    .manga-thumbnail {
+        height: 156px;
+    }
+}
