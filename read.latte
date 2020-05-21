@@ -1,0 +1,1487 @@
+
+
+{block content}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.0.7/css/swiper.min.css" rel="stylesheet">
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.0.7/js/swiper.min.js'></script>
+
+<!--link rel="stylesheet" href="https://unpkg.com/vue-my-photos/dist/lightbox.css"-->
+
+<script src='https://cdn.polyfill.io/v2/polyfill.min.js'></script>
+<script src="https://unpkg.com/vue"></script>
+<script src="https://unpkg.com/vuejs-datepicker"></script>
+<script src="https://unpkg.com/vuex"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
+<script src="https://unpkg.com/vue-multiselect@2.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue-moment@4.0.0/dist/vue-moment.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.0/dist/vue-multiselect.min.css">
+<script src="https://cdn.jsdelivr.net/npm/vue-awesome-swiper@3.1.3/dist/vue-awesome-swiper.js"></script>
+<!-- script src="https://unpkg.com/vue-my-photos/dist/lightbox.js"></script-->
+<script src="https://cdn.jsdelivr.net/npm/vue-numeral-filter/dist/vue-numeral-filter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue-js-modal@1.3.28/dist/index.min.js"></script>
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/vue-infinite-loading@^2/dist/vue-infinite-loading.js"></script>
+<script src="https://kit.fontawesome.com/d7c25567ad.js" crossorigin="anonymous"></script>
+
+
+    <script type="application/javascript">
+        const DB_NAME = 'mangadb';
+        const DB_VERSION = 2;
+        let DB;
+
+        let idb = {
+
+            async getDb() {
+                return new Promise((resolve, reject) => {
+
+                    if(DB) { return resolve(DB); }
+                    console.log('OPENING DB', DB);
+                    let request = window.indexedDB.open(DB_NAME, DB_VERSION);
+
+                    request.onerror = e => {
+                        console.log('Error opening db', e);
+                        reject('Error');
+                    };
+
+                    request.onsuccess = e => {
+                        DB = e.target.result;
+                        resolve(DB);
+                    };
+
+                    request.onupgradeneeded = e => {
+                        console.log('onupgradeneeded');
+                        let db = e.target.result;
+                        db.createObjectStore("mangasData", { autoIncrement: false, keyPath:'mixedId' });
+                        db.createObjectStore("chapterData", { autoIncrement: false, keyPath:'mixedId' });
+                    };
+                });
+            },
+            async deleteManga(manga) {
+
+                let db = await this.getDb();
+
+                return new Promise(resolve => {
+
+                    let trans = db.transaction(['mangasData'],'readwrite');
+                    trans.oncomplete = () => {
+                        resolve();
+                    };
+
+                    let store = trans.objectStore('mangasData');
+                    store.delete(manga.mixedId);
+                });
+            },
+            async getManga(id) {
+
+                let db = await this.getDb();
+
+                return new Promise(resolve => {
+
+                    let trans = db.transaction(['mangasData'],'readwrite');
+                    trans.oncomplete = (event) => {
+                        resolve(request.result);
+                    };
+
+                    let store = trans.objectStore('mangasData');
+                    let request = store.get(id);
+                });
+            },
+            async getMangas() {
+
+                let db = await this.getDb();
+
+                return new Promise(resolve => {
+
+                    let trans = db.transaction(['mangasData'],'readonly');
+                    trans.oncomplete = () => {
+                        resolve(mangas);
+                    };
+
+                    let store = trans.objectStore('mangasData');
+                    let mangas = [];
+
+                    store.openCursor().onsuccess = e => {
+                        let cursor = e.target.result;
+                        if (cursor) {
+                            mangas.push(cursor.value);
+                            cursor.continue();
+                        }
+                    };
+
+                });
+            },
+
+            async saveManga(manga) {
+
+                let db = await this.getDb();
+
+                return new Promise(resolve => {
+
+                    let trans = db.transaction(['mangasData'],'readwrite');
+                    trans.oncomplete = () => {
+                        resolve();
+                    };
+
+                    let store = trans.objectStore('mangasData');
+                    store.put(manga);
+
+                });
+
+            },
+
+            async getChapterPageList(id) {
+
+                let db = await this.getDb();
+
+                return new Promise(resolve => {
+
+                    let trans = db.transaction(['chapterData'],'readwrite');
+                    trans.oncomplete = (event) => {
+                        resolve(request.result);
+                    };
+
+                    let store = trans.objectStore('chapterData');
+                    let request = store.get(id);
+                });
+            },
+
+            async saveChapterPageList(pageChapterListObject) {
+
+                let db = await this.getDb();
+
+                return new Promise(resolve => {
+
+                    let trans = db.transaction(['chapterData'],'readwrite');
+                    trans.oncomplete = () => {
+                        resolve();
+                    };
+
+                    let store = trans.objectStore('chapterData');
+                    store.put(pageChapterListObject);
+
+                });
+
+            },
+
+            async deleteDatabase() {
+
+                let db = await this.getDb();
+
+                let trans = db.transaction(['chapterData'], 'readwrite');
+
+                // create an object store on the transaction
+                let objectStore = trans.objectStore('chapterData');
+
+                // Make a request to clear all the data out of the object store
+                let objectStoreRequest = objectStore.clear();
+
+                objectStoreRequest.onsuccess = function (event) {
+                    let trans = db.transaction(['mangasData'], 'readwrite');
+                    let objectStore2 = trans.objectStore('mangasData');
+                    let objectStoreRequest2 = objectStore2.clear();
+                    objectStoreRequest2.onsuccess = function (event) {
+                        alert('Udaje odmazane.');
+                    };
+                };
+            }
+
+        }
+    </script>
+
+
+<link rel="stylesheet" media="screen,projection,tv" href="{$basePath}/css/read.css" type="text/css">
+
+<div id="app">
+    <div class="row-fluid white-smoke-background quote-app-container">
+        <div class="container-fluid">
+            <div class="col-xs-12 quote-me-new-content-container">
+                <div class="quote-me-new-content-wrapper">
+                    <manga-list-component></manga-list-component>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 noPadding position-relative">
+        </div>
+    </div>
+</div>
+    <script type="x-template" id="profile" n:syntax="asp">
+        <div>
+            <div v-if="account && account.code">
+                <div class="login-info">
+                    Login : {{account.code}}
+                    <div class="hidden-lg hidden-md hidden-sm"></div>
+                    <a href="#" @click="toggleLogIn" v-if="!showLogInBox"> Přihlásit pod jinym loginem </a>
+                </div>
+                <div v-if="showLogInBox" class="log-in-input-box">
+                    <label>Zadej login :</label>
+                    <input v-model="newLogin" class="new-login-input">
+                    <div class="hidden-lg hidden-md hidden-sm divider-div">
+                    </div>
+                    <button @click="sendLogIn" class="btn btn-default">Přihlásit</button>
+                    <button @click="toggleLogIn" class="btn btn-default">Zrušit</button>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+            <div>
+                <download-list-cron></download-list-cron>
+            </div>
+        </div>
+    </script>
+
+    <script type="x-template" id="download-list-cron" n:syntax="asp">
+        <div class="download-list-cron-wrapper" v-if="chapterBeingCurrentlyDownloaded || downloadList.length > 0">
+            <div v-if="chapterBeingCurrentlyDownloaded">
+                Currently being downloaded id : {{chapterBeingCurrentlyDownloaded.id}} : {{pagesToDownload}} / {{downloadedPages}}
+            </div>
+            <div v-if="downloadList.length > 0">
+                Chapters to download :
+                {{downloadList.length}}
+            </div>
+        </div>
+    </script>
+
+
+
+<script type="x-template" id="manga-list-component" n:syntax="asp">
+    <div>
+        <div class="row read-homepage-wrapper">
+            <div class="col-xs-12">
+                <div>
+                    <profile></profile>
+                </div>
+                <button title="Zobraz menu" v-if="listsHidden" @click="showAllLists" class="btn btn-default show-all-menu-button-icon"><i class="fas fa-bars"></i></button>
+
+            </div>
+            <div v-if="showNewest">
+                <div class="col-xs-12">
+                    <h3>Nejnovější</h3>
+                </div>
+                <div class="col-xs-12">
+                    <swiper :options="swiperOption">
+                        <swiper-slide v-for="(manga, index) in newMangas" v-bind:key="manga.id">
+                            <div class="slide-wrapper">
+                                <a :title="manga.name" href="#" v-on:click="loadChapterListFromNewest(manga.id)">
+                                    <img v-if="index > 5" class="manga-thumbnail swiper-lazy" :data-src="manga.thumbnail">
+                                    <img v-if="index <= 5" class="manga-thumbnail swiper-lazy" :src="manga.thumbnail">
+                                    <div v-if="index > 5" class="swiper-lazy-preloader"></div>
+                                    <span class="fa-stack fa-3x chapters-count-icon-wrapper" title="Počet chapterů">
+                                      <i class="fa fa-circle fa-stack-2x"></i>
+                                      <strong class="fa-stack-1x chapters-count-text">{{manga.chapters_count}}</strong>
+                                    </span>
+                                </a>
+                            </div>
+                        </swiper-slide>
+                        <div class="swiper-pagination" slot="pagination"></div>
+                    </swiper>
+                </div>
+            </div>
+
+            <div v-if="showTrending">
+                <div class="col-xs-12">
+                    <h3>Nejčtenější</h3>
+                </div>
+                <div class="col-xs-12">
+                    <swiper :options="swiperOption">
+                        <swiper-slide v-for="(manga, index) in trendingMangas" v-bind:key="manga.id">
+                            <div class="slide-wrapper">
+                                <a :title="manga.name" href="#" v-on:click="loadChapterListFromTrending(manga.id)">
+                                    <img v-if="index > 5" class="manga-thumbnail swiper-lazy" :data-src="manga.thumbnail">
+                                    <img v-if="index <= 5" class="manga-thumbnail swiper-lazy" :src="manga.thumbnail">
+                                    <div v-if="index > 5" class="swiper-lazy-preloader"></div>
+                                    <span class="fa-stack fa-3x chapters-count-icon-wrapper" title="Počet chapterů">
+                                      <i class="fa fa-circle fa-stack-2x"></i>
+                                      <strong class="fa-stack-1x chapters-count-text">{{manga.chapters_count}}</strong>
+                                    </span>
+                                </a>
+                            </div>
+                        </swiper-slide>
+                        <div class="swiper-pagination" slot="pagination"></div>
+                    </swiper>
+                </div>
+            </div>
+
+            <div v-if="showEditorPick">
+                <div class="col-xs-12">
+                    <h3>Editor's Picks</h3>
+                </div>
+                <div class="col-xs-12">
+                    <swiper :options="swiperOption">
+                        <swiper-slide v-for="(manga, index) in mangas" v-bind:key="manga.id">
+                            <div class="slide-wrapper">
+                                <a :title="manga.name" href="#" v-on:click="loadChapterListFromEditorPick(manga.id)">
+                                    <img v-if="index > 5" class="manga-thumbnail swiper-lazy" :data-src="manga.thumbnail">
+                                    <img v-if="index <= 5" class="manga-thumbnail swiper-lazy" :src="manga.thumbnail">
+                                    <div v-if="index > 5" class="swiper-lazy-preloader"></div>
+                                    <span class="fa-stack fa-3x chapters-count-icon-wrapper" title="Počet chapterů">
+                                      <i class="fa fa-circle fa-stack-2x"></i>
+                                      <strong class="fa-stack-1x chapters-count-text">{{manga.chapters_count}}</strong>
+                                    </span>
+                                </a>
+                            </div>
+                        </swiper-slide>
+                        <div class="swiper-pagination" slot="pagination"></div>
+                    </swiper>
+                </div>
+            </div>
+
+            <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
+                <h3>Vyhledat mangu</h3>
+                <div class="full-list-select-box">
+                    <vue-multiselect
+                            v-model="selectedMangaFromAllList"
+                            :options="fullMangaList"
+                            class="select--no-border"
+                            key="id"
+                            label="name"
+                            @select="onFullListMangaSelect"
+                            placeholder="Klikni a piš"
+                            SelectLabel="Klik aneb Enter"
+                            :hideSelected="true"
+                    />
+                </div>
+            </div>
+
+            <div v-if="chapters.length > 0" class="col-xs-12 text-center">
+                <hr>
+
+                <div class="btn-group change-state-select-box" role="group" aria-label="Button group with nested dropdown">
+
+                    <button title="Obrazky na maximalnu sirku stranky" v-if="selectedChapter !== '' && selectedChapter !== 1" @click="goToPrevChapter" class="btn btn-default"><i class="fas fa-chevron-left"></i></button>
+                    <div class="btn-group" role="group">
+                        <select name="typeoftrip" v-model="selectedChapter"
+                                class="bootstrap-input-border form-control" aria-required="true"
+                                aria-invalid="false">
+                            <option value="">Vyber kapitolu</option>
+                            <option v-for="(chapter, index) in chapters" v-bind:key="chapter.id" :value="chapter.order" v-text="chapter.name + (chapter.readed ? ' - přečtené' : '') "></option>
+                        </select>
+                    </div>
+                    <button title="Obrazky na maximalnu sirku stranky" v-if="selectedChapter === '' || selectedChapter < chapters.length" @click="goToNextChapter" class="btn btn-default"><i class="fas fa-chevron-right"></i></button>
+
+                    <button title="Obrazky na maximalnu sirku stranky" v-if="!minWidthMode" @click="minWidthMode = !minWidthMode" class="btn btn-default"><i class="fas fa-expand"></i></button>
+                    <button title="Obrazky nepresahujuce originalnu sirku." v-if="minWidthMode" @click="minWidthMode = !minWidthMode" class="btn btn-default"><i class="fas fa-compress"></i></button>
+
+                    <button v-if="chaptersByLanguages.length>1" v-for="(chaptersByLanguage, index) in chaptersByLanguages" @click="changeMangaLanguage(chaptersByLanguage.manga_id)" v-bind:key="chaptersByLanguage.id" class="btn btn-default hidden-xs">{{chaptersByLanguage.language}}</button>
+
+                    <button title="Stiahni na offline citanie" @click="toggleChapterDownloadScreen" class="btn btn-default">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+
+                <div class="btn-group change-state-select-box languages-top-margin" role="group" aria-label="Button group with nested dropdown">
+                    <button v-if="chaptersByLanguages.length>1" v-for="(chaptersByLanguage, index) in chaptersByLanguages" @click="changeMangaLanguage(chaptersByLanguage.manga_id)" v-bind:key="chaptersByLanguage.id" class="btn btn-default hidden-sm hidden-md hidden-lg">{{chaptersByLanguage.language}}</button>
+                </div>
+
+                <div class="clearfix"></div>
+            </div>
+
+            <div v-if="showDownloadSection" class="col-xs-12">
+                <offline-download-management :chapters="chapters"></offline-download-management>
+            </div>
+            <div v-if="activeChapterPagesList.length > 0" class="col-xs-12 col-lg-8 col-lg-push-2">
+                <div>
+                    <div class="text-center" v-bind:class="{'min-width-mode': minWidthMode}">
+                        <div v-for="(page, index) in activeChapterPagesList" v-bind:key="page.id">
+                            <img class="chapterPage"  v-if="pageViewLimit >= index && typeof page.imageBlob === 'undefined'" :src="page.image">
+                            <img class="chapterPage"  v-if="pageViewLimit >= index && typeof page.imageBlob !== 'undefined'" :src="page.imageBlob">
+                        </div>
+                        <infinite-loading v-if="hideAutoLoadForPages === false" @infinite="loadMoreImages" :throttleLimit="1000" :distance="500" >
+                            <div slot="no-more"><br></div>
+                            <div slot="no-results"><br></div>
+                        </infinite-loading>
+                    </div>
+
+                    <div class="clearfix">
+                        <div v-if="chapters.length > 0" class="text-center">
+                            <select name="typeoftrip" v-model="selectedChapter"
+                                    class="bootstrap-input-border wpcf7-form-control change-state-select-box" aria-required="true"
+                                    aria-invalid="false">
+                                <option value="">Pick Chapter</option>
+                                <option v-for="(chapter, index) in chapters" v-bind:key="chapter.id" :value="chapter.order">{{chapter.name}}</option>
+                            </select>
+                        </div>
+
+                        <div v-if="selectedChapter" class="text-center">
+                            <hr>
+                            <comment-section :chapterOrderId="selectedChapter" v-bind:key="selectedChapter"></comment-section>
+                            <hr>
+                        </div>
+                    </div>
+
+                    <div v-if="allPagesOfChapterLoaded">
+                        <br><br>
+                        <infinite-loading @infinite="infiniteHandler">
+                            <div slot="no-more">Reached last chapter.<br><br></div>
+                            <div slot="no-results">Reached last chapter.<br><br></div>
+                        </infinite-loading>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12 text-left">
+                <div v-if="chapters.length > 0" class="col-xs-12 text-center">
+                    <hr>
+                </div>
+
+                <h4>About :</h4>
+                Alternative graphic for 'citaren' on https://www.anime-manga.cz/ , featuring autoload images/chapter on scroll and easy chapters switching. <br>
+                This is temporal BETA testing page, finally will be moved to anime-manga domain. Feel free to share thoughts / notices on Discord channel - @Osud .<br>
+                <h4>Changelog :</h4>
+                v0.1 : <br>
+                - Chapter click, showing actuall manga. <br>
+                v0.2 : <br>
+                - Import of 6 additional mangas. <br>
+                - Slider. <br>
+                - Responsivity. <br>
+                - Autoload next chapter on scroll. <br>
+                v0.3 : <br>
+                - Fixed 404 images (parser edit, hotfix on different extension of thumb generated image). <br>
+                - Automated test to check availability of chapter images (for dead urls). <br>
+                - Tweak for situation when new uploaded chapter is actually not most recent one (Example : 24,25,26 exist and somebody translates 1,2,3) <br>
+                - Added changelog. <br>
+                v0.3.1 : <br>
+                - Fix for Hellsing chapters, some weird stuff in 'title' content instead of image name.<br>
+                - Backend re-work for new chapters ordering system. <br>
+                v0.4 : <br>
+                - Load only first 10 images, then on scroll next 5, till the end, then load next chapter on scroll. (Server performance boost in comparison of load all 100+ chapter images at once) <br>
+                - Log last update of manga (new chapter), log table with last import details. <br>
+                - Automated updater for adding all mangas from 'Seriovky' <br>
+                - Fixed autoload hitting multiple times. Page load will be enabled after 3 sec after chapter change. Still could cause trouble on extreme slow internet. Will be solved depending on request. <br>
+                - Fix for Drug and Drop title image <br>
+                v0.5 : <br>
+                - Feature for selecting any of available mangas, and loading its chpters (selectbox). <br>
+                - Feature to search in manga list selectbox. <br>
+                - Filling up selectbox value when clicking in editors picks. <br>
+                - Extended list of mangas to all from 'Seriovky' <br>
+                - Enlarged editors pick manga list <br>
+                v0.5.1 : <br>
+                - Option to switch page view mode for desktop - max width / original width. <br>
+                v0.6 : <br>
+                - Added arrows for navigating to next or previous chapter <br>
+                - Added buttons to switch between different languages/translation group chapters <br>
+                - If manga contains multiple translation versions also added an mixed version of all available chapters, script will try to join them together by chapter number but its not 100% . <br>
+                - Backend : Feature allowing parsing multi version/language manga parsing. <br>
+                - Backend : Feature allowing parsing content indicator 'redirect' secured links. <br>
+                v0.6.1 : <br>
+                - Faster updating of already indexed content redirect mangas <br>
+                - Switching chapters by pressing left/right arrows <br>
+                v0.7 : <br>
+                - Added newly updated mangas list. <br>
+                - Lazy load of lists manga thumbnail images <br>
+                - Backend : Api for setting latest 30 updated mangas <br>
+                - Slider paggination fixes for mobile <br>
+                - Added collapsing and expanding sliders after manga select <br>
+                v0.8 : <br>
+                - Added most popular manga list. <br>
+                v0.9 : <br>
+                - Added number of chapters to small details <br>
+                v1.0.1 : <br>
+                - Added read history. (So you know what chapter was readen) <br>
+                v1.0.2 : <br>
+                - Your login is now shown. <br>
+                - Added possibility to log in under your login. <br>
+                - Added responsivity for log in. <br>
+                v1.1.0 <br>
+                - Added offline reading <br>
+                v1.2.0 <br>
+                - Added possibility to comment chapter
+            </div>
+        </div>
+    </div>
+</script>
+
+
+    <script type="x-template" id="comment-section" n:syntax="asp">
+        <div>
+            <div v-if="!showAddMessage">
+                <a class="cursor-pointer" @click="showAddMessage = !showAddMessage">Přidat komentář</a>
+            </div>
+            <div v-if="showAddMessage">
+                <textarea maxlength="2000" v-model="message" class="comment-text-box"></textarea>
+                <br>
+                <button @click="createMessage()" class="btn btn-default">Potvrdit správu</button>
+                <button @click="showAddMessage = !showAddMessage" class="btn btn-default">Zrušit</button>
+            </div>
+            <div>
+                <comment v-for="(message, index) in messages" v-bind:key="message.id" :message="message"></comment>
+            </div>
+            <div v-if="showMore">
+                <hr>
+                <a @click="downloadAllMessages()" class="cursor-pointer">Ukázat všechny komentáře</a>
+            </div>
+        </div>
+    </script>
+
+    <script type="x-template" id="comment" n:syntax="asp">
+        <div>
+            <hr>
+            <div> <b>{{message.nick}}</b> - {{message.created}} </div>
+            <div> {{message.message}} </div>
+        </div>
+    </script>
+
+    <script type="x-template" id="offline-download-management" n:syntax="asp">
+        <div>
+            <div>
+                <a @click="deleteDatabase()" href="#">Odmazat všechna stažená data z pameti prohlížeče.</a>
+                <br><br>
+            </div>
+            <div v-for="(chapter, index) in chapters">
+                <span v-text="chapter.name + (chapter.readed ? ' - přečtené' : '') "></span>
+                <button title="Stiahni na offline citanie" @click="downloadChapter(chapter)" class="btn btn-default">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button v-if="chapter.downloading" title="Stiahni na offline citanie" class="btn btn-default">
+                    <i class="fas fa-spinner"></i>
+                </button>
+            </div>
+        </div>
+    </script>
+
+
+<script type="application/javascript" n:syntax="asp">
+    const hotelOnlySearch = '2';
+
+    store = new Vuex.Store({
+        state: {
+            mangaList: [],
+            newMangaList: [],
+            trendingMangaList: [],
+            activeChapterList: {chapters:[]},
+            activeChapterPagesList: [],
+            fullMangaList: [],
+            activeChapterListByLanguage: [],
+            accountData: null,
+            downloadList: []
+        },
+        actions: {
+            refreshMangaList: function (context) {
+                let thisInCustomVariable = this;
+                return new Promise(function (resolve) {
+                    return axios.get('api/featuredmangalist', {
+                        params: {
+                            action: 'all'
+                        }
+                    }).then(function (response) {
+                        Vue.set(thisInCustomVariable.state, 'mangaList', response.data);
+                        return resolve(response.data);
+                    });
+                });
+            },
+            refreshNewMangaList: function (context) {
+                let thisInCustomVariable = this;
+                return new Promise(function (resolve) {
+                    return axios.get('api/newmangalist', {
+                        params: {
+                            action: 'all'
+                        }
+                    }).then(function (response) {
+                        Vue.set(thisInCustomVariable.state, 'newMangaList', response.data);
+                        return resolve(response.data);
+                    });
+                });
+            },
+            refreshTrendingMangaList: function (context) {
+                let thisInCustomVariable = this;
+                return new Promise(function (resolve) {
+                    return axios.get('api/popularmangalist', {
+                        params: {
+                            action: 'all'
+                        }
+                    }).then(function (response) {
+                        Vue.set(thisInCustomVariable.state, 'trendingMangaList', response.data);
+                        return resolve(response.data);
+                    });
+                });
+            },
+            refreshFullMangaListSignal: function (context) {
+                let thisInCustomVariable = this;
+                return new Promise(function (resolve) {
+                    return axios.get('api/mangalist', {
+                        params: {
+                            action: 'all'
+                        }
+                    }).then(function (response) {
+                        Vue.set(thisInCustomVariable.state, 'fullMangaList', response.data);
+                        return resolve(response.data);
+                    });
+                });
+            },
+            refreshChapterListSignal: function (context, data) {
+                let thisInCustomVariable = this;
+                Vue.set(thisInCustomVariable.state, 'activeChapterPagesList', []);
+                return new Promise(function (resolve) {
+                    return axios.get('api/chapterdata', {
+                        params: {
+                            mangaId: data.mangaId,
+                            accountCode: thisInCustomVariable.state.accountData.code
+                        }
+                    }).then(function (response) {
+                        Vue.set(thisInCustomVariable.state, 'activeChapterList', response.data[0]);
+                        Vue.set(thisInCustomVariable.state, 'activeChapterListByLanguage', response.data);
+                        return resolve(response.data);
+                    });
+                });
+            },
+            refreshPageListSignal: function (context, data) {
+                let thisInCustomVariable = this;
+
+                let foundChapter = thisInCustomVariable.state.activeChapterList.chapters.find(element => element.order === data.chapterOrderId);
+
+                if(typeof foundChapter !== 'undefined' && typeof foundChapter.id !== 'undefined') {
+
+                    Vue.set(thisInCustomVariable.state, 'activeChapterPagesList', []);
+
+                    let chapterMixedId = foundChapter.id + '-' + foundChapter.manga_id + '-' + foundChapter.language;
+                    return idb.getChapterPageList(chapterMixedId)
+                        .then(function (dbData) {
+                            if (typeof dbData !== 'undefined' && typeof dbData.pages !== 'undefined') {
+                                Vue.set(thisInCustomVariable.state, 'activeChapterPagesList', dbData.pages);
+                                return Promise.resolve(dbData.pages);
+                            } else {
+                                return axios.get('api/pagedata', {
+                                    params: {
+                                        mangaId: foundChapter.manga_id,
+                                        chapterId: foundChapter.id
+                                    }
+                                }).then(function (response) {
+                                    Vue.set(thisInCustomVariable.state, 'activeChapterPagesList', response.data);
+                                    return Promise.resolve(response.data);
+                                });
+                            }
+                        });
+
+                } else {
+                    alert('Nastal problem/zmena dat, prosim refreshnite stranku.');
+                    return Promise.reject("Could not find chapter with order".data.chapterOrderId);
+                }
+            },
+            downloadChapterImagesSignal: function (context, data) {
+                let chapter = data.chapter;
+                let thisInCustomVariable = this;
+                    return new Promise(function (resolve) {
+                        return axios.get('api/pagedata', {
+                            params: {
+                                mangaId: chapter.manga_id,
+                                chapterId: chapter.id
+                            }
+                        }).then(function (response) {
+                            return resolve(response.data);
+                        });
+                    });
+
+            },
+
+            downloadPageSignal: function (context, data) {
+
+                return axios.get('api/getimage', {
+                    params: {
+                        url: data.page.image
+                    }
+                }).then(function (response) {
+                    if(typeof response.data.base64 !== 'undefined'){
+                        console.log("Page load");
+                        return Promise.resolve(response.data.base64);
+                    }
+                    return Promise.resolve(null);
+                });
+
+
+                /** TODO: Once on local domain **/
+                /*
+                //"http://www.manga.parser.sk/img/20.jpg"
+                return fetch(data.page.image).then(r => r.blob()).then(blob => {
+
+                    return new Promise(function(resolve, reject){
+                        let reader = new FileReader();
+                        reader.onload = function() {
+                            let b64 = reader.result.replace(/^data:.+;base64,/, '');
+                            console.log("bloooob");
+                            let dataURL="data:image/png;base64," + b64;
+                            resolve(dataURL);
+                        };
+                        reader.readAsDataURL(blob);
+                    });
+
+
+                });
+                */
+
+            },
+
+            chapterpreloadsignal: function (context, data) {
+                let thisInCustomVariable = this;
+                let foundChapter = thisInCustomVariable.state.activeChapterList.chapters.find(element => element.order === data.chapterOrderId);
+
+                //foundChapter.readed = true;
+                Vue.set(foundChapter, 'readed', true);
+
+
+                if(typeof foundChapter !== 'undefined' && typeof foundChapter.id !== 'undefined') {
+
+                    return new Promise(function (resolve) {
+                        return axios.get('api/chapterpreload', {
+                            params: {
+                                mangaId: foundChapter.manga_id,
+                                chapterId: foundChapter.id,
+                                accountCode: thisInCustomVariable.state.accountData.code
+                            }
+                        }).then(function (response) {
+                            return resolve(response.data);
+                        });
+                    });
+                } else {
+                    alert('Nastal problem/zmena dat, prosim refreshnite stranku.');
+                    return Promise.reject("Could not find chapter with order".data.chapterOrderId);
+                }
+            },
+            switchPageListLanguageSignal: function (context, data) {
+                Vue.set(this.state, 'activeChapterList', data);
+                Vue.set(this.state, 'activeChapterPagesList', []);
+                return Promise.resolve(true);
+            },
+            getUserDataSignal: function (context, data) {
+                let thisInCustomVariable = this;
+                if(this.state.accountData === null) {
+                    if (typeof localStorage.accountData !== 'undefined') {
+                        Vue.set(thisInCustomVariable.state, 'accountData', JSON.parse(localStorage.accountData));
+                    } else {
+                        return axios.get('api/accountData', {
+                            params: {
+                            }
+                        }).then(function (response) {
+                            Vue.set(thisInCustomVariable.state, 'accountData', response.data);
+                            localStorage.accountData = JSON.stringify(response.data);
+                            return Promise.resolve(response.data)
+                        });
+                    }
+                } else {
+                    /** TODO : Load user typed data **/
+                }
+
+                return Promise.resolve(true);
+            },
+
+            changeAccountSignal: function (context, data) {
+                let thisInCustomVariable = this;
+                return axios.get('api/accountData', {
+                    params: {
+                        id: data.login
+                    }
+                }).then(function (response) {
+                    if(typeof response.data.code !== 'undefined') {
+                        Vue.set(thisInCustomVariable.state, 'accountData', response.data);
+                        localStorage.accountData = JSON.stringify(response.data);
+                        return Promise.resolve(true);
+                    } else {
+                        alert("Dany login je nespravny, moznych len 5 pokusov na 20 minut.")
+                    }
+                    return Promise.resolve(false);
+                });
+            },
+
+            downloadChapterSignal: function (context, data) {
+                let thisInCustomVariable = this;
+                let chapter = data.chapter;
+                let mangaMixedId = chapter.manga_id + chapter.language;
+                chapter.downloading = 1;
+                let activeChapterList = thisInCustomVariable.state.activeChapterList;
+                let items = activeChapterList.chapters;
+                let foundIndex = items.findIndex(element => element.id === chapter.id);
+                Vue.set(thisInCustomVariable.state.activeChapterList.chapters, foundIndex, chapter);
+
+                activeChapterList.mixedId = chapter.manga_id + chapter.language;
+                return idb.saveManga(activeChapterList).then(function () {
+                   thisInCustomVariable.state.downloadList.push(chapter);
+                    return Promise.resolve(true);
+                })
+
+            },
+
+            storeChapterPagesListSignal: function (context, data) {
+                let thisInCustomVariable = this;
+                let chapter = data.chapter;
+                let chapterPages = data.pageList;
+                let chapterMixedId = chapter.id + "-" +chapter.manga_id + "-" +chapter.language;
+                let chapterListStoreObject = {
+                    'mixedId': chapterMixedId,
+                    'pages': chapterPages,
+                    'chapter': chapter
+                };
+
+                return idb.saveChapterPageList(chapterListStoreObject).then(function () {
+                    return Promise.resolve(true);
+                });
+            },
+
+            deleteDatabaseSignal: function () {
+                return idb.deleteDatabase();
+            },
+
+            downloadMessagesSignal: function(context, data) {
+                let thisInCustomVariable = this;
+                let foundChapter = thisInCustomVariable.state.activeChapterList.chapters.find(element => element.order === data.chapterOrderId);
+
+                return new Promise(function (resolve) {
+                    return axios.get('api/getMessages', {
+                        params: {
+                            manga_id : foundChapter.manga_id,
+                            chapter_id : foundChapter.id,
+                            limit: data.limit
+                        }
+                    }).then(function (response) {
+                        return resolve(response.data);
+                    });
+                });
+            },
+
+            createMessageSignal: function (context, data) {
+                let thisInCustomVariable = this;
+                let foundChapter = thisInCustomVariable.state.activeChapterList.chapters.find(element => element.order === data.chapterOrderId);
+
+                return new Promise(function (resolve) {
+                    return axios.put('api/createMessage', {
+                        params: {
+                            manga_id : foundChapter.manga_id,
+                            chapter_id : foundChapter.id,
+                            comment : data.message,
+                            nick : "anonym",
+                            account_token: "---"
+                        }
+                    }).then(function (response) {
+                        return resolve(response.data);
+                    });
+                });
+            },
+
+    }
+    });
+
+
+
+
+    Vue.component('comment-section', {
+        template: '#comment-section',
+        props: ['chapterOrderId'],
+        created: function () {
+            let thisInCustomVariable = this;
+            this.downloadMessages();
+        },
+        computed: {
+            account: function () {
+                //return this.$store.state.accountData;
+            }
+        },
+        methods: {
+            deleteMessage(id) {
+                let thisInCustomVariable = this;
+                thisInCustomVariable.$store.dispatch('deleteMessageSignal', {id: id})
+                    .then(function (data) {
+                        console.log(data);
+                    });
+            },
+            createMessage() {
+                let thisInCustomVariable = this;
+                thisInCustomVariable.$store.dispatch('createMessageSignal', { chapterOrderId : this.chapterOrderId, message: this.message })
+                    .then(function (data) {
+                        Vue.set(thisInCustomVariable, 'showAddMessage', false);
+                        Vue.set(thisInCustomVariable, 'message', '');
+                        if(data.status==="queue") {
+                            alert("Dosáhli jste limit na 1 komentář na chapter na hodinu, prosim zkuste později.");
+                        } else {
+                            thisInCustomVariable.downloadMessages()
+                        }
+                    });
+            },
+            downloadMessages() {
+                let thisInCustomVariable = this;
+                thisInCustomVariable.$store.dispatch('downloadMessagesSignal', { chapterOrderId : this.chapterOrderId , limit : 6})
+                    .then(function (data) {
+                        if(data.length > 5) {
+                            Vue.set(thisInCustomVariable, 'showMore', true);
+                            data.pop();
+                        }
+                        Vue.set(thisInCustomVariable, 'messages', data);
+                        console.log(data);
+                    });
+            },
+            downloadAllMessages() {
+                let thisInCustomVariable = this;
+                thisInCustomVariable.$store.dispatch('downloadMessagesSignal', { chapterOrderId : this.chapterOrderId , limit : 100})
+                    .then(function (data) {
+                        Vue.set(thisInCustomVariable, 'showMore', false);
+                        Vue.set(thisInCustomVariable, 'messages', data);
+                        console.log(data);
+                    });
+            }
+        },
+        data: function () {
+            return {
+                message: "",
+                showAddMessage : false,
+                showMore: false,
+                messages: []
+            }
+        }
+    });
+
+
+    Vue.component('comment', {
+        template: '#comment',
+        props: ['message'],
+        created: function () {
+            let thisInCustomVariable = this;
+        },
+        computed: {
+            account: function () {
+                //return this.$store.state.accountData;
+            }
+        },
+        methods: {
+            deleteMessage(id) {
+            },
+        },
+        data: function () {
+            return {
+                //message: "",
+            }
+        }
+    });
+
+    Vue.component('download-list-cron', {
+        template: '#download-list-cron',
+        props: ['chapters'],
+        created: function () {},
+        computed: {
+            downloadList: function () {
+                return this.$store.state.downloadList;
+            }
+        },
+        watch: {
+            'downloadList': {
+                handler: function (chapterOrderId) {
+                    let thisInCustomVariable = this;
+                    if (this.downloadList.length > 0 && !this.downloadingAlreadyInProgress) {
+                        this.downloadingAlreadyInProgress = true;
+                        setTimeout(function () {
+                            thisInCustomVariable.downloadChapters();
+                        }, 5000);
+                    }
+                },
+                deep: true
+            }
+        },
+        methods: {
+            downloadChapters() {
+                let thisInCustomVariable = this;
+                let downloadList = this.$store.state.downloadList;
+                if (downloadList.length === 0) {
+                    this.downloadingAlreadyInProgress = false;
+
+                    Vue.set(thisInCustomVariable, 'pagesToDownload', 0);
+                    Vue.set(thisInCustomVariable, 'downloadedPages', 0);
+                    Vue.set(thisInCustomVariable, 'chapterBeingCurrentlyDownloaded', null);
+                    return Promise.resolve(true);
+                }
+
+                let chapterToDownload = this.$store.state.downloadList.pop();
+                Vue.set(thisInCustomVariable, 'chapterBeingCurrentlyDownloaded', chapterToDownload);
+
+                return thisInCustomVariable.$store.dispatch('downloadChapterImagesSignal', {chapter: chapterToDownload})
+                    .then(function (pages) {
+                        debugger;
+                        return thisInCustomVariable.downloadPages(pages, [], chapterToDownload);
+                    })
+                    .then(function () {
+                        Vue.set(thisInCustomVariable, 'chapterBeingCurrentlyDownloaded', null);
+                        Vue.set(thisInCustomVariable, 'pagesToDownload', 0);
+                        Vue.set(thisInCustomVariable, 'downloadedPages', 0);
+                        return thisInCustomVariable.downloadChapters();
+                    });
+            },
+
+            downloadPages(pages, downloadedPages, chapterToDownload) {
+                let thisInCustomVariable = this;
+                Vue.set(thisInCustomVariable, 'pagesToDownload', pages.length);
+                return new Promise((resolve, reject) => {
+                    let page = pages.pop();
+                    return thisInCustomVariable.$store.dispatch('downloadPageSignal', {page: page}).then(function (pageBlob) {
+                        page.imageBlob = pageBlob;
+                        downloadedPages.unshift(page);
+                        return new Promise(function (resolve, reject) {
+                            setTimeout(function () {
+                                resolve();
+                            }, 1500);
+                        });
+                    }).then(function (data) {
+                        Vue.set(thisInCustomVariable, 'downloadedPages', (thisInCustomVariable.downloadedPages + 1));
+                        resolve();
+                    });
+                }).then(function (data) {
+                    if (pages.length === 0) {
+                        console.log('chapter downloaded');
+                        debugger;
+                        return thisInCustomVariable.$store.dispatch('storeChapterPagesListSignal', {pageList: downloadedPages, chapter: chapterToDownload})
+                            .then(function () {
+                                return Promise.resolve(true);
+                            });
+                    } else {
+                        return thisInCustomVariable.downloadPages(pages, downloadedPages, chapterToDownload);
+                    }
+                });
+            }
+
+
+
+
+        },
+        data: function () {
+            return {
+                downloadingAlreadyInProgress: false,
+                chapterBeingCurrentlyDownloaded: null,
+                pagesToDownload: 0,
+                downloadedPages: 0
+            }
+        }
+    });
+
+
+    Vue.component('offline-download-management', {
+        template: '#offline-download-management',
+        props: ['chapters'],
+        created: function () {
+            let thisInCustomVariable = this;
+        },
+        computed: {
+            account: function () {
+                //return this.$store.state.accountData;
+            }
+        },
+        methods: {
+            downloadChapter(chapter) {
+                let thisInCustomVariable = this;
+                thisInCustomVariable.$store.dispatch('downloadChapterSignal', {chapter: chapter})
+                    .then(function (data) {
+                        console.log(data);
+                    });
+            },
+            deleteDatabase() {
+                this.$store.dispatch('deleteDatabaseSignal')
+                    .then(function () {
+                        console.log("deleted");
+                    });
+            }
+        },
+        data: function () {
+            return {
+                //chapters: []
+            }
+        }
+    });
+
+
+    Vue.component('profile', {
+        template: '#profile',
+        created: function () {
+            let thisInCustomVariable = this;
+        },
+        computed: {
+            account: function () {
+                return this.$store.state.accountData;
+            },
+            downloadList: function () {
+                return this.$store.state.downloadList;
+            }
+        },
+        methods: {
+            toggleLogIn() {
+                this.showLogInBox = !this.showLogInBox;
+            },
+            sendLogIn() {
+                let thisInCustomVariable = this;
+                thisInCustomVariable.$store.dispatch('changeAccountSignal', {login: this.newLogin})
+                    .then(function (data) {
+                        console.log(data);
+                        if(data === true) {
+                            thisInCustomVariable.showLogInBox = !thisInCustomVariable.showLogInBox;
+                        }
+                    });
+            }
+        },
+        data: function () {
+            return {
+                showLogInBox: false,
+                newLogin: ''
+            }
+        }
+    });
+
+    Vue.component('manga-list-component', {
+        template: '#manga-list-component',
+        created: function () {
+            let thisInCustomVariable = this;
+            window.addEventListener('keydown', this.doKeyCommand);
+            window.addEventListener('keyup', this.doKeyUpCommand);
+
+            thisInCustomVariable.$store.dispatch('refreshFullMangaListSignal')
+                .then(function (data) {
+                    //
+                });
+        },
+        destroyed() {
+            window.removeEventListener('keydown', this.doKeyCommand);
+            window.addEventListener('keyup', this.doKeyUpCommand);
+        },
+        computed: {
+            mangas: function () {
+                return this.$store.state.mangaList;
+            },
+            newMangas: function () {
+                return this.$store.state.newMangaList;
+            },
+            trendingMangas: function () {
+                return this.$store.state.trendingMangaList;
+            },
+            chapters: function () {
+                return this.$store.state.activeChapterList.chapters;
+            },
+            chaptersByLanguages: function () {
+                return this.$store.state.activeChapterListByLanguage
+            },
+            activeChapterPagesList: function () {
+                return this.$store.state.activeChapterPagesList;
+            },
+            fullMangaList: function () {
+                return this.$store.state.fullMangaList;
+            }
+        },
+        data: function () {
+            return {
+                value: '',
+                selectedChapter: '',
+                selectedManga: '',
+                autoLoadingNextChapter: false,
+                pageViewLimit: 9,
+                selectedMangaFromAllList: [],
+                hideAutoLoadForPages: false,
+                allPagesOfChapterLoaded: false,
+                minWidthMode: false,
+                arrowBounceEnabled: false,
+                showEditorPick: true,
+                showTrending: true,
+                showNewest: true,
+                listsHidden: false,
+                showDownloadSection: false,
+                swiperOption: {
+                    slidesPerView: 6,
+                    spaceBetween: 30,
+                    lazy: true,
+                    loadOnTransitionStart: true,
+                    dynamicBullets: true,
+                    breakpoints: {
+                        // when window width is >= 320px
+                        480: {
+                            slidesPerView: 2,
+                            spaceBetween: 20
+                        },
+                        767: {
+                            slidesPerView: 3,
+                            spaceBetween: 20
+                        },
+                        // when window width is >= 640px
+                        991: {
+                            slidesPerView: 3,
+                            spaceBetween: 40
+                        },
+                        1199: {
+                            slidesPerView: 4,
+                            spaceBetween: 40
+                        }
+                    },
+                    pagination: {
+                        el: '.swiper-pagination',
+                        clickable: true
+                    }
+                }
+            };
+        },
+        watch: {
+            'selectedChapter': {
+                handler: function (chapterOrderId) {
+                    let thisInCustomVariable = this;
+                    /* only on click, not on autoload */
+                    if(thisInCustomVariable.autoLoadingNextChapter !== true) {
+                        if (chapterOrderId !== "") {
+                            thisInCustomVariable.$store.dispatch('refreshPageListSignal', {chapterOrderId: chapterOrderId})
+                                .then(function (data) {
+                                    console.log("notiffied");
+                                });
+                        }
+                    } else {
+                        thisInCustomVariable.autoLoadingNextChapter = false;
+                    }
+
+                    //do this always when chapter changes
+                    Vue.set(thisInCustomVariable, 'allPagesOfChapterLoaded', false);
+                    Vue.set(thisInCustomVariable, 'pageViewLimit', 9);
+                    Vue.set(thisInCustomVariable, 'hideAutoLoadForPages', true);
+
+                    setTimeout(function () {
+                            Vue.set(thisInCustomVariable, 'hideAutoLoadForPages', false);
+                        },
+                        3000);
+
+                    window.scrollTo(0,0);
+                },
+                deep: true
+            }
+        },
+        methods: {
+            toggleChapterDownloadScreen() {
+                this.showDownloadSection = !this.showDownloadSection;
+            },
+
+            loadPages(chapterOrderId, mangaId) {
+                if(chapterOrderId!=="") {
+                    let thisInCustomVariable = this;
+                    return thisInCustomVariable.$store.dispatch('refreshPageListSignal', {chapterOrderId: chapterOrderId})
+                        .then(function (data) {
+                            console.log("notiffied");
+                            return Promise.resolve(data);
+                        });
+                } else {
+                    return Promise.resolve([]);
+                }
+            },
+            infiniteHandler($state) {
+                let thisInCustomVariable = this;
+                let selectedChapterId = this.selectedChapter;
+                if(selectedChapterId === '') {
+                    selectedChapterId = 0;
+                }
+                let nextChapterOrderId = selectedChapterId + 1;
+                const found = thisInCustomVariable.chapters.find(element => element.order === nextChapterOrderId);
+
+                if(typeof found !== 'undefined') {
+                    this.autoLoadingNextChapter = true;
+                    this.loadPages(nextChapterOrderId, this.selectedManga).then(function (data) {
+                        if (data.length) {
+                            Vue.set(thisInCustomVariable, 'selectedChapter', nextChapterOrderId);
+                            setTimeout(function () {
+                                    $state.loaded();
+                                },
+                                3000);
+                        } else {
+                            thisInCustomVariable.autoLoadingNextChapter = false;
+                            $state.complete();
+                        }
+                    });
+                } else {
+                    thisInCustomVariable.autoLoadingNextChapter = false;
+                    $state.complete($state);
+                }
+            },
+
+            loadMoreImages($state) {
+                let thisInCustomVariable = this;
+
+                if (thisInCustomVariable.pageViewLimit > thisInCustomVariable.activeChapterPagesList.length) {
+                    $state.complete();
+                    Vue.set(thisInCustomVariable, 'allPagesOfChapterLoaded', true);
+                } else {
+                    Vue.set(thisInCustomVariable, 'pageViewLimit', thisInCustomVariable.pageViewLimit + 5);
+
+                    if(thisInCustomVariable.pageViewLimit > thisInCustomVariable.activeChapterPagesList.length) {
+                        thisInCustomVariable.$store.dispatch('chapterpreloadsignal', {chapterOrderId: thisInCustomVariable.selectedChapter})
+                    }
+
+                    setTimeout(function () {
+                            $state.loaded();
+                        },
+                        3000);
+                }
+            },
+
+            hideAllLists () {
+                Vue.set(this, 'showEditorPick', false);
+                Vue.set(this, 'showTrending', false);
+                Vue.set(this, 'showNewest', false);
+
+                Vue.set(this, 'listsHidden', true);
+            },
+
+            showAllLists () {
+                Vue.set(this, 'showEditorPick', true);
+                Vue.set(this, 'showTrending', true);
+                Vue.set(this, 'showNewest', true);
+
+                Vue.set(this, 'listsHidden', false);
+            },
+
+            loadChapterListFromNewest (mangaId) {
+                this.hideAllLists();
+                Vue.set(this, 'showNewest', true);
+                this.loadChapterList(mangaId);
+            },
+
+            loadChapterListFromEditorPick (mangaId) {
+                this.hideAllLists();
+                Vue.set(this, 'showEditorPick', true);
+                this.loadChapterList(mangaId);
+            },
+
+            loadChapterListFromTrending (mangaId) {
+                this.hideAllLists();
+                Vue.set(this, 'showTrending', true);
+                this.loadChapterList(mangaId);
+            },
+
+            loadChapterList: function (mangaId) {
+                let thisInCustomVariable = this;
+
+                this.$store.dispatch('refreshChapterListSignal', {
+                    'mangaId': mangaId
+                }).then(function () {
+                    Vue.set(thisInCustomVariable, 'selectedManga', mangaId);
+                    Vue.set(thisInCustomVariable, 'selectedChapter', "");
+
+                    if(thisInCustomVariable.selectedMangaFromAllList.id !== mangaId) {
+                        let foundManga = thisInCustomVariable.fullMangaList.find(element => element.id === mangaId);
+                        Vue.set(thisInCustomVariable, 'selectedMangaFromAllList', foundManga);
+                    }
+
+                    return Promise.resolve();
+                });
+            },
+
+
+            doKeyCommand(e) {
+                let thisInCustomVariable = this;
+                console.log(e.keyCode);
+
+                if(thisInCustomVariable.arrowBounceEnabled === false) {
+                    thisInCustomVariable.arrowBounceEnabled = true;
+                    if (e.keyCode === 37) {
+                        thisInCustomVariable.goToPrevChapter();
+                    }
+
+                    if (e.keyCode === 39) {
+                        thisInCustomVariable.goToNextChapter();
+                    }
+
+                    /*if(e.keyCode === 37 || e.keyCode === 39) {
+                        setTimeout(function () {
+                                thisInCustomVariable.arrowBounceEnabled = false;
+                            },
+                            15000);
+                    }*/
+                }
+
+            },
+
+            doKeyUpCommand(e) {
+                let thisInCustomVariable = this;
+                console.log(e.keyCode);
+                if (e.keyCode === 37) {
+                    thisInCustomVariable.arrowBounceEnabled = false;
+                }
+
+                if (e.keyCode === 39) {
+                    thisInCustomVariable.arrowBounceEnabled = false;
+                }
+            },
+
+            goToPrevChapter: function () {
+                if (this.selectedManga !== '' && this.selectedChapter !== 1 && this.selectedChapter !== '' && this.selectedChapter !== '') {
+                    Vue.set(this, 'selectedChapter', this.selectedChapter - 1);
+                }
+            },
+
+            goToNextChapter: function () {
+                if (this.selectedManga !== '' && (this.selectedChapter === '' || this.selectedChapter < this.chapters.length)) {
+                    if (this.selectedChapter === '') {
+                        Vue.set(this, 'selectedChapter', 1);
+                    } else {
+                        Vue.set(this, 'selectedChapter', this.selectedChapter + 1);
+                    }
+                }
+            },
+
+            changeMangaLanguage(mangaId) {
+                let thisInCustomVariable = this;
+                let activeChapterList = this.chaptersByLanguages.find(element => element.manga_id === mangaId);
+                this.$store.dispatch('switchPageListLanguageSignal', activeChapterList).then(function (response) {
+                    Vue.set(thisInCustomVariable, 'selectedChapter', "");
+                });
+
+            },
+
+            onFullListMangaSelect: function (option, id) {
+                this.loadChapterList(option.id)
+            }
+        },
+
+        components: {
+            vuejsDatepicker: vuejsDatepicker
+        },
+
+        mounted: function () {
+            this.$store.dispatch('refreshMangaList').then(function () {
+
+            });
+            this.$store.dispatch('refreshNewMangaList').then(function () {
+
+            });
+            this.$store.dispatch('refreshTrendingMangaList').then(function () {
+
+            });
+        }
+    });
+
+
+    Vue.component('vue-multiselect', window.VueMultiselect.default);
+
+    Vue.use(VueAwesomeSwiper);
+    //Vue.use(Lightbox);
+    Vue.use(vueMoment);
+    Vue.use(window["vue-js-modal"].default);
+
+    new Vue({
+        el: '#app',
+        data: {
+            message: 'Hello Vue.js!'
+        },
+        components: {
+            vuejsDatepicker: vuejsDatepicker
+        },
+        store: store,
+        created: function () {
+            let thisInCustomVariable = this;
+            thisInCustomVariable.$store.dispatch('getUserDataSignal')
+                .then(function (data) {
+                });
+        },
+    });
+</script>
+
+
+
+<!-- Default Statcounter code for read
+http://anime-manga-citaren-beta.jecool.net/roParser/www/read -->
+<script type="text/javascript">
+    var sc_project=12163279;
+    var sc_invisible=1;
+    var sc_security="16f39718";
+    var sc_https=1;
+</script>
+<script type="text/javascript"
+        src="https://www.statcounter.com/counter/counter.js" async></script>
+<noscript><div class="statcounter"><a title="Web Analytics"
+                                      href="https://statcounter.com/" target="_blank"><img class="statcounter"
+                                                                                           src="https://c.statcounter.com/12163279/0/16f39718/1/" alt="Web
+Analytics"></a></div></noscript>
+<!-- End of Statcounter Code -->
+
+{/block}
